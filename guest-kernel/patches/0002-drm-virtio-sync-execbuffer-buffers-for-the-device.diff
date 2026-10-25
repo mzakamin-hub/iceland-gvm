@@ -1,0 +1,69 @@
+Subject: drm/virtio: sync the guest-written buffers of an execbuffer to the device
+
+In a protected VM the guest backing of every virtio-gpu resource is reached by the host only through the restricted
+DMA pool (swiotlb bounce buffers). The TRANSFER_TO_HOST_2D/3D paths already dma_sync_sgtable_for_device() the backing
+before the command; an EXECBUFFER did not. Mesa's virgl driver uploads texture data through a staging buffer: it
+writes the staging resource's mapped pages and emits COPY_TRANSFER3D inside the command stream, so the host copied the
+stale bounce buffer (zeros) into the texture, and every compositor that samples textures (weston GL, Xorg glamor,
+labwc) stayed black while CPU paths and vertex colours were drawn.
+
+Before the submit, every virgl PIPE_BUFFER (staging, vertex, index, constant buffers) of the buffer list with a shmem
+backing is synced DMA_TO_DEVICE. Textures are not (the host's copy is the authority for them), nor objects with a
+guest-bound transfer pending. Applies with patch -p1 on the iceland-linux q90j tree plus patch 0001.
+
+diff -ruN a/drivers/gpu/drm/virtio/virtgpu_object.c b/drivers/gpu/drm/virtio/virtgpu_object.c
+--- a/drivers/gpu/drm/virtio/virtgpu_object.c
++++ b/drivers/gpu/drm/virtio/virtgpu_object.c
+@@ -270,6 +270,7 @@
+ 		virtio_gpu_object_attach(vgdev, bo, ents, nents);
+ 	}
+ 
++	bo->params = *params;   /* iceland gvm: virgl objects too (execbuffer sync needs the target) */
+ 	if (!params->virgl) {
+ 		/* store non-virgl object with its param to the restore list */
+ 		bo->params = *params;
+diff -ruN a/drivers/gpu/drm/virtio/virtgpu_submit.c b/drivers/gpu/drm/virtio/virtgpu_submit.c
+--- a/drivers/gpu/drm/virtio/virtgpu_submit.c
++++ b/drivers/gpu/drm/virtio/virtgpu_submit.c
+@@ -9,6 +9,7 @@
+  */
+ 
+ #include <linux/dma-fence-unwrap.h>
++#include <linux/dma-mapping.h>
+ #include <linux/file.h>
+ #include <linux/sync_file.h>
+ #include <linux/uaccess.h>
+@@ -350,8 +351,33 @@
+ 		fput(submit->sync_file->file);
+ }
+ 
++/*
++ * iceland gvm: the host sees guest backing only through the restricted DMA pool; push what the CPU wrote into
++ * the buffers of this command stream (virgl staging / vertex / index / constant buffers) to their bounce
++ * buffers, as the TRANSFER_TO_HOST paths do (vm-run v10c: texture uploads arrived as zeros).
++ */
++static void virtio_gpu_sync_buflist_for_device(struct virtio_gpu_submit *submit)
++{
++	struct virtio_gpu_device *vgdev = submit->vgdev;
++	struct virtio_gpu_object_array *objs = submit->buflist;
++	u32 i;
++
++	if (!objs || !virtio_gpu_use_dma_api(vgdev->vdev))
++		return;
++
++	for (i = 0; i < objs->nents; i++) {
++		struct virtio_gpu_object *bo = gem_to_virtio_gpu_obj(objs->objs[i]);
++
++		if (!virtio_gpu_is_shmem(bo) || !bo->params.virgl || bo->params.blob ||
++		    bo->params.target != 0 || !bo->base.sgt || READ_ONCE(bo->from_host_pending))
++			continue;
++		dma_sync_sgtable_for_device(vgdev->vdev->dev.parent, bo->base.sgt, DMA_TO_DEVICE);
++	}
++}
++
+ static void virtio_gpu_submit(struct virtio_gpu_submit *submit)
+ {
++	virtio_gpu_sync_buflist_for_device(submit);
+ 	virtio_gpu_cmd_submit(submit->vgdev, submit->buf, submit->exbuf->size,
+ 			      submit->vfpriv->ctx_id, submit->buflist,
+ 			      submit->out_fence);

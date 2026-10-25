@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Fedora VM
+GenericName=Virtual machine
+Comment=Fedora 44 in a protected Gunyah virtual machine (crosvm)
+Exec=pkexec /usr/libexec/iceland-gvm/gvm.sh run --gpu
+Icon=computer
+Terminal=false
+Categories=System;Emulator;
+StartupNotify=false
