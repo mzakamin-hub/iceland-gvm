@@ -4,12 +4,12 @@
 %global __strip /bin/true
 Name:           iceland-gvm
 Version:        0.3
-Release:        27%{?dist}
+Release:        49%{?dist}
 Summary:        Protected Gunyah virtual machines (crosvm) for the OnePlus Pad 4
 License:        BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND BSD-2-Clause-Patent
 ExclusiveArch:  aarch64
 Source0:        gvm-payload.tar
-Requires:       kmod, virglrenderer, libwayland-client, libcap, NetworkManager, dnsmasq, dosfstools, zstd, openssl, polkit
+Requires:       kmod, virglrenderer, libvncserver, libwayland-client, libcap, NetworkManager, dnsmasq, dosfstools, zstd, openssl, polkit
 
 %description
 crosvm (upstream 96e84c3f680e + gvm-v4 GuestAccept, BSD-3-Clause), a guest kernel for protected VMs (restricted DMA pool), gvm.sh, guest tools and a GNOME launcher.
@@ -21,7 +21,7 @@ agent on hvc0, make-pristine / reset-disk.
 
 %install
 mkdir -p %{buildroot}/usr/libexec/iceland-gvm %{buildroot}/usr/share/applications %{buildroot}/usr/share/polkit-1/actions
-cp -a gvm/crosvm gvm/gvm.sh gvm/gvm-pngstat.py gvm/gvm-kwinprobe.py gvm/CREDITS-crosvm gvm/bisect gvm/firmware gvm/guest %{buildroot}/usr/libexec/iceland-gvm/
+cp -a gvm/crosvm gvm/gvm.sh gvm/gvm-pngstat.py gvm/gvm-kwinprobe.py gvm/gvm-touchinject.py gvm/gvm-vncprobe.py gvm/gvm-memscan.py gvm/CREDITS-crosvm gvm/firmware gvm/guest %{buildroot}/usr/libexec/iceland-gvm/
 install -m 644 gvm/integ/iceland-gvm-fedora.desktop %{buildroot}/usr/share/applications/
 install -m 644 gvm/integ/org.iceland.gvm.policy %{buildroot}/usr/share/polkit-1/actions/
 
@@ -31,6 +31,131 @@ install -m 644 gvm/integ/org.iceland.gvm.policy %{buildroot}/usr/share/polkit-1/
 /usr/share/polkit-1/actions/org.iceland.gvm.policy
 
 %changelog
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-49
+- repack, no code change: guest kernel Image relinked with a neutral build user, gunyah_guest.ko and the edk2-gunyah ECAM
+  firmware rebuilt from neutral build paths, so no build-machine path or user name is inside a packaged file; two
+  comments no longer name the Windows image tooling's path; a privacy scan of the finished rpm gates the build
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-48
+- packaging only (no code change from 0.3-47): the bisect payload (old guest kernels and crosvm kept for the v6
+  regression bisect) is no longer packaged; built with _buildhost iceland-builder
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-47
+- gvm.sh V11: the summary has its numbers again (MB/s, Mbit/s, crosvm and host CPU; an awk "a > b ? .." inside the
+  printf list was an output redirection, so the fix run's rows were empty)
+- boot shim (shared memory mode, still behind its flag): prints the RM node it took and its capids, drain bounded
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-45
+- release fix: gvm.sh V11 passes vhost-net as crosvm's bare flag (",vhost-net"; "vhost-net=true" was refused:
+  "expected ','" in the release run)
+- boot shim (shared memory mode, still behind its flag): the resource-manager node is also looked up by the Qualcomm
+  compatibles, and the whole /hypervisor subtree is printed when it is not found
+- vm-run: rerun group default V1B WINAPP V11
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-43
+- release: the consolidated parity (0.3-29..41) + Windows (0.3-30..42) work in one build; crosvm dd077fe
+- vm-run release kit (group RELEASE order V1B V5 V8 VINX V9 V11 PVM WINAPP, K-ALL)
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-42
+- gvm.sh (Windows agent, v10n): io_uring disks by default (GVM_BLK_OPTS, also the Windows disk); swiotlb at most 320 MiB
+  (the guest's restricted DMA pool slot array is one kmalloc, 4 MiB max: 512 MiB never booted); V4-1 NOT-RUN outside
+  the 3D mode (no GuestAccept); V5-2 samples the guest desktop up to 4 times; OPT rows with THP alloc / fallback deltas
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-41
+- boot shim (shared memory mode, p6): cleans the device tree's cache lines before parsing it. The shim runs with the
+  MMU off and read the tree as crosvm wrote it, without the resource manager's /hypervisor nodes ("no
+  gunyah-resource-manager node"; the handoff fix of 0.3-39 worked: the shim read the parcel handles). On failure it now
+  prints the tree's root nodes. Cleans the tree again after rewriting /memory.
+- gvm.sh pvm: a guest that never comes up no longer ends the step (p6 printed no PV rows: v4_guest's die); the wait
+  stops as soon as the shim gives up
+- vm-run: diag sysctls restored one at a time (q90s refuses the saved max_rcu_stall_to_panic)
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-39
+- crosvm (shared memory mode, p5 PV-A-2): the handoff page is described in the guest's /memory like the swiotlb and
+  the framebuffer (plus a no-map reserved-memory node); left out, the boot shim's first read of it took a synchronous
+  external abort (esr 0x96000010, far 0x80400000) that never reached the host. ICELAND_SHIM_HANDOFF_MEMORY=0 restores
+  the p5 layout (diagnostic).
+- packaging: gvm-memscan.py is installed (p5 PV-A-6 found it missing); gvm.sh pvm: guest rows are NOT-RUN without ssh
+  (PV-A-4 had passed on an empty answer), the shim's console lines (SHIM ...) become row PV-A-0
+- contains the Windows agent's 0.3-38
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-38
+- gvm.sh (Windows agent): W3-3 checks the DroidVM driver services with sc query (rdmapool, viostor, netkvm must run);
+  kprobe counts are deltas since the probes were armed; the demand-page probe records the gpa and the donate probe
+  the flags and size, reported as rows W-PH and OPT-<tag>-HIST (donation sizes, most-faulting guest 2 MiB regions)
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-37
+- crosvm: opt-in shared memory mode --protected-vm-pseudo-unprotected (after DroidVM dvm-crosvm 849e05f): only a
+  4 MiB boot region (boot shim + device tree) is lent; the guest RAM window is shared after GH_VM_START with
+  GH_VM_PROTECTED_SHARE (R/W/X) and accepted by the boot shim (droidvm-shim, compiled in), which rewrites /memory and
+  starts the kernel; no swiotlb. THE HOST CAN READ THE VM'S MEMORY in this mode. GH-SHIM log lines.
+- crosvm: touch mode also sends ABS_X / ABS_Y for the first contact (single-touch pointer emulation, p4 VINX)
+- gvm.sh: pvm rows (PV-A/PV-B/PV-R, gvm-memscan.py proves host readability), v11 network rows; VIN judge reads a
+  touch screen's MT position (p4 VINX read the never-sent ABS_X), recorder reports only the device's own axes
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-36
+- (Windows agent, on the parity agent's 0.3-35) 2 MiB lends for every VM by default (GVM_HUGEPAGES=0 = 4 KiB);
+  gvm.sh opt: one workload per variant (boot to ssh, 1 GiB memory touch, disk read / direct write, sha256 on every
+  vCPU, host wake-up jitter idle / under load, lend counters); GVM_BLK_OPTS (crosvm --block options), GVM_VMM_CPUS
+  (crosvm's own threads); Windows row W3-R: the RDP server answers an X.224 connection request
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-35
+- contains the Windows agent's 0.3-32 / 0.3-34 (2 MiB lends by default for Windows, display / load / soak rows)
+- crosvm: a fullscreen size from the window's creation roundtrip is applied to the new viewport (p3: the window first
+  mapped at 800x500 and KWin answered with an 800x500 configure)
+- crosvm touchpad mode: a horizontal two-finger scroll goes to the tablet device's horizontal wheel (the virtio mouse
+  has none; p3 VI-7 on the rotated tablet scrolled sideways and the guest saw nothing)
+- VIN after the p3 run (portrait, hands off): calibration from crosvm's own touch coordinates in every mode (any
+  rotation: p3 measured rot90), the guest recorder reports the current axes (evdev drops unchanged values), one D-Bus
+  name per KWin probe (the watcher took the probes' answers: 'no window'), the fit never tracebacks;
+  GVM_VIN_ROTATION + vm-run group VINROT: VIN with rotation lock in portrait and landscape, restored afterwards
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-33
+- crosvm (parity/3d): GVM-ACCEPT-STATS lines (runtime blob shares: count, average / max map and unmap time,
+  mapped MiB), the measurement behind the DroidVM-style pre-shared GPU pool decision
+- gvm.sh v10 (V10 rows): virgl GL vs venus Vulkan (vkmark headless) vs GL through zink over venus vs llvmpipe on one
+  VM, GuestAccept cost without failures
+- VIN fixes after the p12 tablet run: crosvm logs every xdg configure (GVM-CONFIGURE) and, with
+  CROSVM_GVM_INPUT_LOG=1, every wl_touch down (GVM-TOUCH); gvm.sh vin waits for the fullscreen window to settle,
+  calibrates with a warm-up + four taps (least squares; the tablet maps the injector transposed), presses away
+  from the previous tap (evdev drops repeated ABS values) and reports what crosvm received per gesture
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-31
+- crosvm (parity/vnc, built with the vnc feature): --vnc-server host=,port=,password-file= serves the virtio-gpu
+  scanout or the --simplefb framebuffer over VNC (LibVNCServer bridge ported from DroidVM dvm-crosvm 849e05f,
+  GPL-2.0-or-later, CPU transport; see CREDITS-crosvm); RFB pointer -> the gvm absolute tablet, keys -> keyboard;
+  default host 127.0.0.1; GVM-VNC listening / GVM-VNC-FRAME lines
+- gvm.sh v9 (V9 rows, iceland-vms 0.2-7): GVM_VNC=1 runs a VM with the VNC display; gvm-vncprobe.py, a minimal RFB
+  client (handshake, raw frame statistics, key, pointer) judges it; guest gvm-evrec.py can record keyboards
+- contains 0.3-30 (Windows: pristine image per run)
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-34
+- gvm.sh win: guest RAM in 2 MiB THP folios by default (WINH1 PASS: the host freezes were the 4 KiB on-demand
+  lend storm, one TrustZone call per page), 4 vCPU / 4 GiB unpinned by default; display rows from the VM window
+  screenshot (W-D, W4-1); W6-L: CPU / disk / memory load inside Windows (winsat over ssh) before the soak
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-32
+- gvm.sh win: GVM_HUGEPAGES=1 now also prepares shmem THP (2 MiB folios lent as 2 MiB blocks); kprobe counters of
+  the lend path (qcom_scm_assign_mem, gunyah_demand_page, memextent_donate) in the 1 s sample and row W-P
+  (fresh-disk WINN1 / WINN4 froze the host as soon as Windows touched memory fast)
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-30
+- gvm.sh win: every run starts from the pristine image (reflink, else sparse copy; GVM_WIN_KEEP=1 keeps the disk):
+  a freeze in the middle of the first boot had left Windows' setup half done; row W-IMG logs the pristine sha256
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-29
+- crosvm (parity/input): fullscreen keeps the guest resolution and scales it to the output with the viewport;
+  input is mapped back per axis; leaving fullscreen at run time restores the window size (GVM-FULLSCREEN on/off);
+  the input region covers any surface size
+- gvm.sh vin (VIN rows, iceland-vms 0.2-6): the window's input modes judged in the guest: a host uinput touch screen
+  (gvm-touchinject.py: injector, judge, calibration) -> KWin -> crosvm -> guest evdev (guest tool gvm-evrec.py);
+  GVM_INPUT_MODE / GVM_FULLSCREEN / GVM_OUTPUT pass to crosvm
+- gvm-kwinprobe.py: fullscreen / unfullscreen actions (the app's fullscreen button, VI-W / VI-F rows)
+
+* Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-28
+- crosvm 55fd317: window input modes (CROSVM_GVM_INPUT_MODE touch / tablet / touchpad), real multi-finger touch,
+  pointer coordinates scaled to buffer pixels, CROSVM_GVM_FULLSCREEN / CROSVM_GVM_OUTPUT (iceland-vms 0.2-6)
+- gvm.sh win: GVM_AFFINITY set but empty = unpinned; the 1 s sample records the CPU each crosvm thread last ran on
+  and the per-CPU arch-timer interrupt counts (the WINN hard lockup: a CPU that stops counting is stuck in Gunyah)
+
 * Sun Oct 25 2026 mzak <mzak.amin@gmail.com> - 0.3-27
 - gvm-wayland-session: ordered after / conflicting with lightdm and getty@tty1 (both stopped before the start);
   gvm-wayland-check restarts the session once per boot when the scanout framebuffer is not labwc's after 12 s

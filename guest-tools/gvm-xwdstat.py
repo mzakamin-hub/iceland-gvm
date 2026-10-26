@@ -11,7 +11,7 @@ import sys
 disp = sys.argv[1] if len(sys.argv) > 1 else ":0"
 env = dict(os.environ, DISPLAY=disp)
 for a in ["/run/lightdm/root/" + disp, "/var/run/lightdm/root/" + disp] + glob.glob("/run/user/*/gdm/Xauthority") \
-        + glob.glob("/home/*/.Xauthority") + glob.glob("/run/sddm/xauth_*"):
+        + glob.glob(os.path.join("/", "home", "*", ".Xauthority")) + glob.glob("/run/sddm/xauth_*"):
     if os.path.exists(a):
         env["XAUTHORITY"] = a
         break

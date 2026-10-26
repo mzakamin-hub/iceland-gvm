@@ -1,6 +1,6 @@
 # The guest kernel
 
-`guest/Image` of iceland-gvm 0.3-27 is a Linux 7.3.0-next-20261020 kernel for protected Gunyah VMs run by crosvm.
+`guest/Image` of iceland-gvm 0.3-49 is a Linux 7.3.0-next-20261020 kernel for protected Gunyah VMs run by crosvm.
 Kernel release `7.3.0-next-20261020-gvm+` (`kernel.release`); its exact `.config` is
 `config-7.3.0-next-20261020-gvm+`.
 
@@ -38,7 +38,7 @@ patch -p1 < ../../iceland-gvm/guest-kernel/patches/0002-drm-virtio-sync-execbuff
 make O=../gout ARCH=arm64 LLVM=1 LOCALVERSION=+ defconfig
 scripts/kconfig/merge_config.sh -m -O ../gout ../gout/.config ../../iceland-gvm/guest-kernel/gvm-guest-gg.config
 make O=../gout ARCH=arm64 LLVM=1 LOCALVERSION=+ olddefconfig
-make O=../gout ARCH=arm64 LLVM=1 LOCALVERSION=+ -j"$(nproc)" Image modules
+KBUILD_BUILD_USER=iceland KBUILD_BUILD_HOST=iceland-builder make O=../gout ARCH=arm64 LLVM=1 LOCALVERSION=+ -j"$(nproc)" Image modules
 ```
 
 The result's `.config` matches `config-7.3.0-next-20261020-gvm+`. Modules: `make ... INSTALL_MOD_PATH=DIR

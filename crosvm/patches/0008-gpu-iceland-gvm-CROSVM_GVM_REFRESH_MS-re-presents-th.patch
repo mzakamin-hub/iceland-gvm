@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: mzak <mzak.amin@gmail.com>
+From: iceland <iceland@localhost>
 Date: Sat, 24 Oct 2026 18:20:55 +0300
-Subject: [PATCH 08/12] gpu: iceland gvm: CROSVM_GVM_REFRESH_MS re-presents the
+Subject: [PATCH 08/26] gpu: iceland gvm: CROSVM_GVM_REFRESH_MS re-presents the
  scanouts periodically
 
 Idle GL compositors (glamor, weston-GL) stayed black while continuously rendering
@@ -112,3 +112,6 @@ index d1d8466..0686b4a 100644
      /// If the resource is the scanout resource, flush it to the display.
      pub fn flush_resource(&mut self, resource_id: u32) -> VirtioGpuResult {
          if resource_id == 0 {
+-- 
+2.43.0
+

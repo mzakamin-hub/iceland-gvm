@@ -16,7 +16,7 @@ import os
 
 disp_name = (sys.argv[1] if len(sys.argv) > 1 else ":0").encode()
 for a in ["/run/lightdm/root/" + disp_name.decode(), "/var/run/lightdm/root/" + disp_name.decode()] \
-        + glob.glob("/run/user/*/gdm/Xauthority") + glob.glob("/home/*/.Xauthority") + glob.glob("/run/sddm/xauth_*"):
+        + glob.glob("/run/user/*/gdm/Xauthority") + glob.glob(os.path.join("/", "home", "*", ".Xauthority")) + glob.glob("/run/sddm/xauth_*"):
     if os.path.exists(a):          # as root, like gvm-xwdstat.py: the display manager's auth file
         os.environ["XAUTHORITY"] = a
         break

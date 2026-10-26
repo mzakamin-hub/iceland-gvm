@@ -25,11 +25,12 @@ EDK2_TARGET=RELEASE bash ./build.sh -D PCI_CAM_MODE=FALSE       # -> edk2-gunyah
 EDK2_TARGET=DEBUG   bash ./build.sh -D PCI_CAM_MODE=FALSE       # -> edk2-gunyah-ecam-debug.fd
 ```
 
-Hashes of the files in 0.3-27 (PrePi embeds the build date, so a rebuild differs):
+Hashes of the files in 0.3-49, built in `/build/edk2-gunyah` (PrePi embeds the build date and the build path, so a
+rebuild elsewhere differs):
 
 ```
-13a8c295365a459656f6b46a9f4294befebddb5f1c6fa38e22047d7a440d3989  edk2-gunyah-ecam-release.fd
-01a5dc66b5b5d826790aa31b0022e4985202b9e8dc969431431278349f9a0ea5  edk2-gunyah-ecam-debug.fd
+2f749b377c96c3d39d1afc5fff8d89ec894d999311f67e0426c0783a9a9a1c10  edk2-gunyah-ecam-release.fd
+82acdf937b2f4633a3c52a8f41ae1ea2b98dd0e56955e84d76a44a0f73dd110b  edk2-gunyah-ecam-debug.fd
 ```
 
 Licence: BSD-2-Clause-Patent (`edk2-License.txt`, `edk2-gunyah-LICENSE`, installed next to the firmware).
