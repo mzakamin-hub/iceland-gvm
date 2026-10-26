@@ -1,0 +1,99 @@
+From 6f542167140d6a6d8749c4a8bf42f65bb973cf0a Mon Sep 17 00:00:00 2001
+From: "morikawa.toshinari" <morikawa.toshinari@jp.panasonic.com>
+Date: Mon, 19 May 2025 10:15:48 +0900
+Subject: [PATCH 4/4] vkr: expose restricted amount of memoryHeaps for each
+ guest
+
+Limit the guest visible memoryHeaps to avoid pipeline abort()
+when guest memoryHeaps usage reaches to host memoryHeaps limit.
+The percentage for each guest can be set via VKR_HEAP_MEMORY_PERCENT
+environment variable.
+
+Signed-off-by: Toshinari Morikawa <morikawa.toshinari@jp.panasonic.com>
+Part-of: <https://gitlab.freedesktop.org/virgl/virglrenderer/-/merge_requests/1646>
+(cherry picked from commit e0a1caf3b147bb26dfe524dbb85ded1177e7e49e)
+
+[iceland: backported to 1.3.0 - only the heap-percent block; the newer mem-type spoof hunk around it is not part of this change]
+---
+ src/venus/vkr_common.c          |  6 ++++++
+ src/venus/vkr_common.h          |  1 +
+ src/venus/vkr_physical_device.c | 20 ++++++++++++++++++++
+ 3 files changed, 27 insertions(+)
+
+diff --git a/src/venus/vkr_common.c b/src/venus/vkr_common.c
+index 34f8ced9..3ab6bf6b 100644
+--- a/src/venus/vkr_common.c
++++ b/src/venus/vkr_common.c
+@@ -218,13 +218,19 @@ static const struct debug_named_value vkr_debug_options[] = {
+ };
+ 
+ uint32_t vkr_debug_flags;
++uint32_t vkr_heap_memory_percent;
+ 
+ DEBUG_GET_ONCE_FLAGS_OPTION(vkr_debug_flags, "VKR_DEBUG", vkr_debug_options, 0)
++DEBUG_GET_ONCE_NUM_OPTION(vkr_heap_memory_percent, "VKR_HEAP_MEMORY_PERCENT", 0)
+ 
+ void
+ vkr_debug_init(void)
+ {
+    vkr_debug_flags = debug_get_option_vkr_debug_flags();
++
++   vkr_heap_memory_percent = debug_get_option_vkr_heap_memory_percent();
++   if (vkr_heap_memory_percent > 100)
++      vkr_heap_memory_percent = 100;
+ }
+ 
+ void
+diff --git a/src/venus/vkr_common.h b/src/venus/vkr_common.h
+index e24a16fb..083d386a 100644
+--- a/src/venus/vkr_common.h
++++ b/src/venus/vkr_common.h
+@@ -178,6 +178,7 @@ struct vkr_region {
+ };
+ 
+ extern uint32_t vkr_debug_flags;
++extern uint32_t vkr_heap_memory_percent;
+ 
+ void
+ vkr_debug_init(void);
+diff --git a/src/venus/vkr_physical_device.c b/src/venus/vkr_physical_device.c
+index e2c3baa5..70639375 100644
+--- a/src/venus/vkr_physical_device.c
++++ b/src/venus/vkr_physical_device.c
+@@ -171,6 +171,22 @@ vkr_physical_device_init_memory_properties(struct vkr_physical_device *physical_
+    VkPhysicalDevice handle = physical_dev->base.handle.physical_device;
+    vk->GetPhysicalDeviceMemoryProperties(handle, &physical_dev->memory_properties);
+ 
++   /* VKR_HEAP_MEMORY_PERCENT controls the Vulkan memory heap capacity exposed to the
++    * driver side. To be noted, it doesn't enforce the maximium device memory alloc,
++    * but serves as a hint to steer the system and app default behavior. To actually
++    * restrict the device memory alloc from the venus driver side, one can configure
++    * venus to the guest vram mode (virgl_renderer_capset_venus::use_guest_vram) with
++    * a dedicated heap suballocated by drm mm and VMM.
++    */
++   if (vkr_heap_memory_percent > 0) {
++      assert(vkr_heap_memory_percent <= 100);
++      for (uint32_t i = 0; i < physical_dev->memory_properties.memoryHeapCount; i++) {
++         physical_dev->memory_properties.memoryHeaps[i].size =
++            physical_dev->memory_properties.memoryHeaps[i].size *
++            vkr_heap_memory_percent / 100;
++      }
++   }
++
+    /* XXX When a VkMemoryType has VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, we
+     * assume any VkDeviceMemory with the memory type can be made external and
+     * be exportable.  That is incorrect but is what we have to live with with
+@@ -276,6 +292,10 @@ vkr_physical_device_init_extensions(struct vkr_physical_device *physical_dev)
+       else if (!strcmp(props->extensionName, "VK_KHR_external_fence_fd"))
+          physical_dev->KHR_external_fence_fd = true;
+ 
++      if (vkr_heap_memory_percent > 0 &&
++          !strcmp(props->extensionName, "VK_EXT_memory_budget"))
++         continue;
++
+       const uint32_t spec_ver = vkr_extension_get_spec_version(props->extensionName);
+       if (spec_ver) {
+          if (props->specVersion > spec_ver)
+-- 
+2.43.0
+

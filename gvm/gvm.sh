@@ -1404,8 +1404,14 @@ pvm() {   # parity step 4: the opt-in shared memory mode (DroidVM pseudo-unprote
 		PVM_C0=$(stat -c %s "$L/console-run.txt" 2> /dev/null || echo 0)
 		v4_guest || say "pvm: no 3D guest in the shared memory mode"
 		pvm_boot PV-B
-		local gm; gm=$(G 'timeout 120 glmark2-es2-drm --off-screen -b build:use-vbo=true -b texture -b shading 2>&1 | grep -i score' 2>/dev/null)
-		[ -n "$gm" ] && row PV-B-3 PASS "virgl GL in shared mode: $gm" || row PV-B-3 FAIL "glmark2 gave no score"
+		# rel55 PV-B-3 "no score": this ran glmark2 as the ssh user without sudo (no access to card0), with a shorter
+		# timeout than V4-4 and its output thrown away. Now exactly as V4-4 (sudo, 180 s), output kept, and the
+		# guest's DRM state taken for THIS VM (v4-guest-* files are overwritten by the later PV-R boot)
+		G 'ls -l /dev/dri; sudo dmesg | grep -iE "virtio_gpu|drm|gunyah" | tail -n 30' > "$L/PV-B-guest-drm.txt" 2>&1
+		G 'sudo timeout 180 glmark2-es2-drm --off-screen -b build:use-vbo=true -b texture -b shading 2>&1 | tail -n 12' > "$L/PV-B-glmark2.txt" 2>&1
+		local gm; gm=$(grep -m1 'glmark2 Score' "$L/PV-B-glmark2.txt")
+		[ -n "$gm" ] && row PV-B-3 PASS "virgl GL in shared mode: $gm (render node: $(grep -c renderD "$L/PV-B-guest-drm.txt"))" \
+			|| row PV-B-3 FAIL "glmark2 gave no score: $(grep -m2 -iE 'error|fail|denied|cannot|unable' "$L/PV-B-glmark2.txt" | tr '\n' ' ' | cut -c1-160) | /dev/dri: $(grep -oE '(card|renderD)[0-9]+' "$L/PV-B-guest-drm.txt" | tr '\n' ' ')"
 		grep -a 'GVM-ACCEPT-STATS' "$L/crosvm-stderr.txt" | tail -n1 | sed 's/^.*\] //' | cut -c1-160 > "$L/pv-b-acc.txt"
 		[ -s "$L/pv-b-acc.txt" ] && row PV-B-4 INFO "$(cat "$L/pv-b-acc.txt")"
 		v4_end PV-B

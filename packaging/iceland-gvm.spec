@@ -4,7 +4,7 @@
 %global __strip /bin/true
 Name:           iceland-gvm
 Version:        0.3
-Release:        55%{?dist}
+Release:        58%{?dist}
 Summary:        Protected Gunyah virtual machines (crosvm) for the OnePlus Pad 4
 License:        BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND BSD-2-Clause-Patent
 ExclusiveArch:  aarch64
@@ -31,6 +31,18 @@ install -m 644 gvm/integ/org.iceland.gvm.policy %{buildroot}/usr/share/polkit-1/
 /usr/share/polkit-1/actions/org.iceland.gvm.policy
 
 %changelog
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-58
+- crosvm (parity/kbd-grab b47d643 on 71a2adb): keyboard grab - with CROSVM_GVM_KBD_GRAB=1 the VM window asks the
+  compositor (keyboard-shortcuts-inhibit-unstable-v1) to pass its own shortcuts (Super, Alt+Tab) to the VM while it
+  has the keyboard focus; GVM-KBD-GRAB requested / active / inactive / unavailable on stderr. iceland-vms 0.2-22 sets
+  it for VMs with display.keyboard_grab
+- runs with the virglrenderer 1.3.0-1.iceland1 venus fixes (kit-vm21 C / S rows); no other change to 0.3-57
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-57
+- gvm.sh pvm PV-B (3D in the shared memory mode, diagnostics): glmark2 runs as in V4-4 (sudo, 180 s; the release
+  run's PV-B-3 ran it as the ssh user without access to card0 and threw its output away); its output and the guest's
+  /dev/dri + DRM log are kept for this VM (PV-B-glmark2.txt, PV-B-guest-drm.txt)
+
 * Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-55
 - release: the shared memory mode works (pvm53 on q90u: PV-A-1..7 PASS): crosvm --protected-vm-pseudo-unprotected
   boots a guest whose RAM is shared at run time and accepted by the boot shim (no bounce buffers; the host can read

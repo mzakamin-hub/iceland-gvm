@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: iceland <iceland@localhost>
 Date: Sat, 24 Oct 2026 21:46:12 +0300
-Subject: [PATCH 10/28] gpu: iceland gvm: CROSVM_GVM_TRACE_SCANOUT=1 logs every
+Subject: [PATCH 10/29] gpu: iceland gvm: CROSVM_GVM_TRACE_SCANOUT=1 logs every
  SET_SCANOUT / RESOURCE_FLUSH (first 400)
 
 vm-run v9: atomic-KMS kmscube never reached the scanout while legacy kmscube did; this shows

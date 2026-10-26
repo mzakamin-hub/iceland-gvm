@@ -17,3 +17,6 @@ value 10.250.0.0
 value 0a:1c:00:00:00:01
 value 0a:1c:47:56:4d:01
 value 0a:1c:47:56:4d:02
+#
+# The virglrenderer spec changelog and the upstream virglrenderer patches carry their authors' published addresses.
+skip email virglrenderer/*

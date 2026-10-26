@@ -1,0 +1,44 @@
+From 8f3226a521b9b9d9330ddf3590cb6b96c227e1d4 Mon Sep 17 00:00:00 2001
+From: Yiwei Zhang <zzyiwei@chromium.org>
+Date: Tue, 20 Oct 2026 17:09:03 -0700
+Subject: [PATCH 1/4] vkr: avoid leaking shm fd on the import path
+
+..also fix a stale assert.
+
+Fixes: 26393fb8 ("venus: Implement VIRGL_RESOURCE_FD_SHM resource import path")
+Part-of: <https://gitlab.freedesktop.org/virgl/virglrenderer/-/merge_requests/1698>
+(cherry picked from commit e18f8c00a9969d41f1cde6b2c7a73af8f518e660)
+---
+ src/venus/vkr_context.c  | 1 +
+ src/venus/vkr_renderer.c | 3 ++-
+ 2 files changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/venus/vkr_context.c b/src/venus/vkr_context.c
+index 4bf526a9..00ee270b 100644
+--- a/src/venus/vkr_context.c
++++ b/src/venus/vkr_context.c
+@@ -269,6 +269,7 @@ vkr_context_import_resource_from_shm(struct vkr_context *ctx,
+       return false;
+    }
+ 
++   close(fd);
+    return true;
+ }
+ 
+diff --git a/src/venus/vkr_renderer.c b/src/venus/vkr_renderer.c
+index c43a96e6..229fcf0e 100644
+--- a/src/venus/vkr_renderer.c
++++ b/src/venus/vkr_renderer.c
+@@ -218,7 +218,8 @@ vkr_renderer_import_resource(uint32_t ctx_id,
+    TRACE_FUNC();
+ 
+    assert(res_id);
+-   assert(fd_type == VIRGL_RESOURCE_FD_DMABUF || fd_type == VIRGL_RESOURCE_FD_OPAQUE);
++   assert(fd_type == VIRGL_RESOURCE_FD_DMABUF || fd_type == VIRGL_RESOURCE_FD_OPAQUE ||
++          fd_type == VIRGL_RESOURCE_FD_SHM);
+    assert(fd >= 0);
+    assert(size);
+ 
+-- 
+2.43.0
+

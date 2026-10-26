@@ -9,7 +9,8 @@ backend as **protected VMs** (the firmware refuses unprotected ones): the guest'
 reaches only a shared bounce buffer (the restricted DMA pool) and the shared regions crosvm sets up. An opt-in shared
 memory mode (below) shares the guest's RAM with the host instead.
 
-Current version: **0.3-55** (package `iceland-gvm`, Fedora 44 aarch64), released together with iceland-vms 0.2-18.
+Current version: **0.3-58** (package `iceland-gvm`, Fedora 44 aarch64), released together with iceland-vms 0.2-22
+and virglrenderer 1.3.0-1.iceland1.
 
 ## What works
 
@@ -17,7 +18,8 @@ Current version: **0.3-55** (package `iceland-gvm`, Fedora 44 aarch64), released
   networking with port forwards, virtio disks, shared folders, a clean shutdown through the guest agent.
 - **3D graphics**: virgl (OpenGL) and venus (Vulkan) on the Adreno GPU, with GPU-composited desktops (Xorg with glamor,
   weston, the labwc Wayland session) drawn in the crosvm window. This needs the guest kernel patch that syncs every GPU
-  command buffer through the restricted DMA pool (`guest-kernel/patches/0002`).
+  command buffer through the restricted DMA pool (`guest-kernel/patches/0002`). The release also carries
+  virglrenderer 1.3.0 with four upstream Venus fixes (see [`virglrenderer/`](virglrenderer)).
 - **Software display fallback**: a framebuffer in memory shared with the host (crosvm `--simplefb`, after DroidVM's
   design) for guests without 3D drivers, and a 2D virtio-gpu display.
 - **Touch input modes** on the VM window: tablet (tap = click, long press = right click), touchpad (relative pointer,
@@ -34,13 +36,14 @@ Current version: **0.3-55** (package `iceland-gvm`, Fedora 44 aarch64), released
   | vhost-net (default) | 2877 MB/s | 4761 MB/s |
 - **Performance defaults**: guest memory lent in 2 MiB pages; io_uring for every disk; the shared I/O bounce buffer
   limited to 320 MiB (larger pools cannot be set up by the guest kernel).
-- **Shared memory mode (opt-in per VM, software display or headless)**: Settings > Memory > Memory protection >
+- **Shared memory mode (opt-in per VM)**: Settings > Memory > Memory protection >
   "Shared with the tablet". The VM still runs under Gunyah, but its RAM is shared with the tablet instead of lent:
   a small boot shim accepts the memory and starts the kernel, so there is no I/O bounce buffer and devices reach
   guest memory directly. **The tablet can read and change all of that VM's memory** (the app shows this warning
-  whenever the mode is selected); Protected stays the default for every VM. Use it with the software display or
-  without a display; 3D graphics in this mode is not supported yet. It is not uniformly faster - measured on the
-  tablet against the same VM in the protected mode:
+  whenever the mode is selected); Protected stays the default for every VM. 3D works in this mode: OpenGL (virgl)
+  and Vulkan (venus, and OpenGL through zink on Vulkan), with Vulkan on by default (glmark2 about 1820 at 1280x800);
+  the software display and headless VMs work too. It is not uniformly faster - measured on the tablet against the
+  same VM in the protected mode:
 
   | | shared | protected | |
   |---|---|---|---|
@@ -49,30 +52,34 @@ Current version: **0.3-55** (package `iceland-gvm`, Fedora 44 aarch64), released
   | network guest -> host | 4494 MB/s | 2611 MB/s | +72 % |
   | network host -> guest | 1484 MB/s | 1940 MB/s | -23 % |
 - **Windows 11 (arm64)**: a prepared image boots on the ACPI + ECAM UEFI firmware; network, Remote Desktop and the
-  image's OpenSSH server work. Shut Windows down from inside Windows, or use Force Off.
+  image's OpenSSH server work. The Virtual Machines app shuts Windows down cleanly over ssh (Shut Down).
+- **Keyboard shortcuts in the VM window** (optional): with `CROSVM_GVM_KBD_GRAB=1` (the app's "Send shortcuts to
+  the VM" setting) the window asks the desktop to pass its shortcuts to the VM while it has the keyboard focus:
+  Alt+Tab, Escape and similar reach the guest. The Super key is still kept by the desktop.
 - A DMA guard in crosvm refuses virtio buffers outside the shared regions instead of touching lent memory.
 
-Requirements: kernel-iceland q90u or newer with the Gunyah modules (vhost-net needs q90s or newer; older kernels fall
+Requirements: kernel-iceland q90u or newer (q90w2 is current) with the Gunyah modules (vhost-net needs q90s or newer; older kernels fall
 back to crosvm's own network). One VM at a time.
 
 ## What is in the package
 
 | Part | Where it comes from |
 |---|---|
-| `crosvm` | upstream crosvm `96e84c3f680e` plus the 28 patches in [`crosvm/patches/`](crosvm/patches), built with the features `gunyah,virgl_renderer,vnc` |
+| `crosvm` | upstream crosvm `96e84c3f680e` plus the 29 patches in [`crosvm/patches/`](crosvm/patches), built with the features `gunyah,virgl_renderer,vnc` |
 | guest kernel `guest/Image` + modules | Linux 7.3.0-next-20261020 (the [iceland-linux](https://github.com/mzakamin-hub/iceland-linux) queue q90j as the source tree) with the guest config and two patches, see [`guest-kernel/`](guest-kernel) (unchanged since 0.3-27) |
 | `guest/initramfs-gvm.cpio.gz` | busybox 1.37.0 (Fedora 44's `busybox` package) and [`initramfs/init.sh`](initramfs/init.sh), packed by `initramfs/mkcpio.py` |
 | `gvm.sh` and its helpers | [`gvm/`](gvm): the command-line tool, its window, touch, VNC and memory helpers |
 | guest tools | [`guest-tools/`](guest-tools): the guest agent (`gvm-agent`), its installer, the guest kernel installer and the input recorder |
 | `firmware/edk2-gunyah-ecam-*.fd` | DroidVM's edk2-gunyah, ACPI + ECAM build, see [`firmware/BUILD.md`](firmware/BUILD.md) |
 | launcher and polkit action | [`gvm/integ/`](gvm/integ) |
+| `virglrenderer` 1.3.0-1.iceland1 (separate RPMs in the release) | Fedora 44's virglrenderer 1.3.0 with four upstream Venus fixes, see [`virglrenderer/`](virglrenderer) |
 
 The host side, the Gunyah VM manager (`gunyah.ko` and its companions), is part of the kernel since iceland-linux q90m.
 
 ## Use
 
 ```bash
-sudo dnf install ./iceland-gvm-0.3-55.fc44.aarch64.rpm
+sudo dnf install ./iceland-gvm-0.3-58.fc44.aarch64.rpm ./virglrenderer-1.3.0-1.iceland1.fc44.aarch64.rpm
 ```
 
 `gvm.sh` lives in `/usr/libexec/iceland-gvm/`. The everyday commands:
@@ -117,6 +124,7 @@ For managing VMs, Windows included, use the app.
   [`LICENSES/droidvm-guest-additions-ADDITIONAL-PERMISSIONS`](LICENSES/droidvm-guest-additions-ADDITIONAL-PERMISSIONS)).
 - `gvm.sh`, the guest tools, `initramfs/`: GPL-2.0-only (`LICENSE`). busybox: GPL-2.0 (Fedora's source package).
 - edk2-gunyah firmware: BSD-2-Clause-Patent (its licence texts are installed with it).
+- virglrenderer: MIT ([`virglrenderer/COPYING`](virglrenderer/COPYING)).
 
 Related: [iceland-vms](https://github.com/mzakamin-hub/iceland-vms) (the app),
 [iceland-linux](https://github.com/mzakamin-hub/iceland-linux) (the host and guest kernel source),

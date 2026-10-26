@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: iceland <iceland@localhost>
 Date: Sat, 24 Oct 2026 17:51:12 +0300
-Subject: [PATCH 07/28] simplefb: iceland gvm: --simplefb software display in
+Subject: [PATCH 07/29] simplefb: iceland gvm: --simplefb software display in
  host-shared memory (after DroidVM)
 
 crosvm run --simplefb width=W,height=H[,format=a8r8g8b8|x8r8g8b8][,poll-hz=N]

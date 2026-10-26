@@ -1,0 +1,36 @@
+From 00ae14a6e917570227bae5990be20a608b8c9fe1 Mon Sep 17 00:00:00 2001
+From: Yiwei Zhang <zzyiwei@chromium.org>
+Date: Tue, 20 Oct 2026 16:55:22 -0700
+Subject: [PATCH 2/4] proxy: old_busy_mask bookkeep should be lock protected
+
+This only affect the error path of fence submission failure.
+
+Part-of: <https://gitlab.freedesktop.org/virgl/virglrenderer/-/merge_requests/1698>
+(cherry picked from commit fd10f6dec311a019451ffbfa9e8a69deedabd36f)
+---
+ src/proxy/proxy_context.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/proxy/proxy_context.c b/src/proxy/proxy_context.c
+index dc23ef58..5b739d90 100644
+--- a/src/proxy/proxy_context.c
++++ b/src/proxy/proxy_context.c
+@@ -200,7 +200,6 @@ proxy_context_submit_fence(struct virgl_context *base,
+                            uint64_t fence_id)
+ {
+    struct proxy_context *ctx = (struct proxy_context *)base;
+-   const uint64_t old_busy_mask = ctx->timeline_busy_mask;
+ 
+    if (ring_idx >= PROXY_CONTEXT_TIMELINE_COUNT)
+       return -EINVAL;
+@@ -218,6 +217,7 @@ proxy_context_submit_fence(struct virgl_context *base,
+       mtx_lock(&ctx->timeline_mutex);
+ 
+    list_addtail(&fence->head, &timeline->fences);
++   const uint64_t old_busy_mask = ctx->timeline_busy_mask;
+    ctx->timeline_busy_mask |= 1ull << ring_idx;
+ 
+    if (proxy_renderer.flags & VIRGL_RENDERER_ASYNC_FENCE_CB)
+-- 
+2.43.0
+
