@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Mon, 26 Oct 2026 10:47:56 +0300
-Subject: [PATCH 27/29] droidvm-shim + gunyah: iceland gvm: shim linked at its
+Subject: [PATCH 27/30] droidvm-shim + gunyah: iceland gvm: shim linked at its
  load address, SHIM[n] step markers, GVM-PAGE-FAULT (pvm49)
 
 pvm49 (0.3-49): crosvm logged "unknown gh exit reason: 3" (GUNYAH_VCPU_EXIT_PAGE_FAULT) right after the shim's

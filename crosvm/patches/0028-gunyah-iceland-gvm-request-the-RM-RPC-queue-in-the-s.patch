@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Mon, 26 Oct 2026 11:28:28 +0300
-Subject: [PATCH 28/29] gunyah: iceland gvm: request the RM-RPC queue in the
+Subject: [PATCH 28/30] gunyah: iceland gvm: request the RM-RPC queue in the
  shared memory mode too (pvm51)
 
 pvm51: the boot shim found /hypervisor with doorbells, the shared-memory and the VM-id nodes, but no resource-manager

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Sun, 25 Oct 2026 11:18:16 +0300
-Subject: [PATCH 14/29] gpu_display: iceland gvm: fullscreen scales the guest
+Subject: [PATCH 14/30] gpu_display: iceland gvm: fullscreen scales the guest
  display to the output, input mapped per axis
 
 - toplevel configure: in the fullscreen state the viewport destination becomes the compositor's size (the guest

@@ -9,7 +9,7 @@ backend as **protected VMs** (the firmware refuses unprotected ones): the guest'
 reaches only a shared bounce buffer (the restricted DMA pool) and the shared regions crosvm sets up. An opt-in shared
 memory mode (below) shares the guest's RAM with the host instead.
 
-Current version: **0.3-58** (package `iceland-gvm`, Fedora 44 aarch64), released together with iceland-vms 0.2-22
+Current version: **0.3-59** (package `iceland-gvm`, Fedora 44 aarch64), released together with iceland-vms 0.2-23
 and virglrenderer 1.3.0-1.iceland1.
 
 ## What works
@@ -20,6 +20,10 @@ and virglrenderer 1.3.0-1.iceland1.
   weston, the labwc Wayland session) drawn in the crosvm window. This needs the guest kernel patch that syncs every GPU
   command buffer through the restricted DMA pool (`guest-kernel/patches/0002`). The release also carries
   virglrenderer 1.3.0 with four upstream Venus fixes (see [`virglrenderer/`](virglrenderer)).
+- **msm native context** (opt-in per VM, "3D: msm native context" in the app): the guest's own Mesa (freedreno for
+  OpenGL, turnip for Vulkan) draws directly on the Adreno 840 through virglrenderer's msm native context; glmark2
+  at 1280x800 scores about 2690 (virgl about 1770). The app delivers a matching guest Mesa
+  (`iceland-vms-guest-mesa`) into the VM; Fedora's Mesa in the guest is not changed.
 - **Software display fallback**: a framebuffer in memory shared with the host (crosvm `--simplefb`, after DroidVM's
   design) for guests without 3D drivers, and a 2D virtio-gpu display.
 - **Touch input modes** on the VM window: tablet (tap = click, long press = right click), touchpad (relative pointer,
@@ -55,7 +59,7 @@ and virglrenderer 1.3.0-1.iceland1.
   image's OpenSSH server work. The Virtual Machines app shuts Windows down cleanly over ssh (Shut Down).
 - **Keyboard shortcuts in the VM window** (optional): with `CROSVM_GVM_KBD_GRAB=1` (the app's "Send shortcuts to
   the VM" setting) the window asks the desktop to pass its shortcuts to the VM while it has the keyboard focus:
-  Alt+Tab, Escape and similar reach the guest. The Super key is still kept by the desktop.
+  Super, Alt+Tab, Escape and similar reach the guest.
 - A DMA guard in crosvm refuses virtio buffers outside the shared regions instead of touching lent memory.
 
 Requirements: kernel-iceland q90u or newer (q90w2 is current) with the Gunyah modules (vhost-net needs q90s or newer; older kernels fall
@@ -65,7 +69,7 @@ back to crosvm's own network). One VM at a time.
 
 | Part | Where it comes from |
 |---|---|
-| `crosvm` | upstream crosvm `96e84c3f680e` plus the 29 patches in [`crosvm/patches/`](crosvm/patches), built with the features `gunyah,virgl_renderer,vnc` |
+| `crosvm` | upstream crosvm `96e84c3f680e` plus the 30 patches in [`crosvm/patches/`](crosvm/patches), built with the features `gunyah,virgl_renderer,vnc` |
 | guest kernel `guest/Image` + modules | Linux 7.3.0-next-20261020 (the [iceland-linux](https://github.com/mzakamin-hub/iceland-linux) queue q90j as the source tree) with the guest config and two patches, see [`guest-kernel/`](guest-kernel) (unchanged since 0.3-27) |
 | `guest/initramfs-gvm.cpio.gz` | busybox 1.37.0 (Fedora 44's `busybox` package) and [`initramfs/init.sh`](initramfs/init.sh), packed by `initramfs/mkcpio.py` |
 | `gvm.sh` and its helpers | [`gvm/`](gvm): the command-line tool, its window, touch, VNC and memory helpers |
@@ -79,7 +83,7 @@ The host side, the Gunyah VM manager (`gunyah.ko` and its companions), is part o
 ## Use
 
 ```bash
-sudo dnf install ./iceland-gvm-0.3-58.fc44.aarch64.rpm ./virglrenderer-1.3.0-1.iceland1.fc44.aarch64.rpm
+sudo dnf install ./iceland-gvm-0.3-59.fc44.aarch64.rpm ./virglrenderer-1.3.0-1.iceland1.fc44.aarch64.rpm
 ```
 
 `gvm.sh` lives in `/usr/libexec/iceland-gvm/`. The everyday commands:

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Mon, 26 Oct 2026 20:47:20 +0300
-Subject: [PATCH 29/29] gpu_display: iceland gvm: keyboard grab
+Subject: [PATCH 29/30] gpu_display: iceland gvm: keyboard grab
  (keyboard-shortcuts-inhibit) with CROSVM_GVM_KBD_GRAB=1
 
 The VM window asks the compositor (KWin, Mutter) to pass its own shortcuts - Super, Alt+Tab, ... - to the VM while

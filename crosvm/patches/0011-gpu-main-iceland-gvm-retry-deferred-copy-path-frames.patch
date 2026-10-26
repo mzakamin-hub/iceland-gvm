@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Sun, 25 Oct 2026 01:11:50 +0300
-Subject: [PATCH 11/29] gpu + main: iceland gvm: retry deferred copy-path
+Subject: [PATCH 11/30] gpu + main: iceland gvm: retry deferred copy-path
  frames; SIGBUS / SIGSEGV report
 
 - virtio-gpu copy path: when the compositor still holds the next buffer the flush was dropped; an idle guest then

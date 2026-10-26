@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Sun, 25 Oct 2026 02:28:07 +0300
-Subject: [PATCH 12/29] virtio: iceland gvm: DMA guard for protected Gunyah VMs
+Subject: [PATCH 12/30] virtio: iceland gvm: DMA guard for protected Gunyah VMs
 
 When guest memory has a static swiotlb region, a virtio descriptor outside the swiotlb and the shared
 framebuffer is refused (GVM-DMA-GUARD log with the device thread and address) instead of letting the device

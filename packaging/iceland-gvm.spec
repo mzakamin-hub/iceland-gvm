@@ -4,7 +4,7 @@
 %global __strip /bin/true
 Name:           iceland-gvm
 Version:        0.3
-Release:        58%{?dist}
+Release:        59%{?dist}
 Summary:        Protected Gunyah virtual machines (crosvm) for the OnePlus Pad 4
 License:        BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND BSD-2-Clause-Patent
 ExclusiveArch:  aarch64
@@ -31,6 +31,11 @@ install -m 644 gvm/integ/org.iceland.gvm.policy %{buildroot}/usr/share/polkit-1/
 /usr/share/polkit-1/actions/org.iceland.gvm.policy
 
 %changelog
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-59
+- crosvm release/0.3-59 4766317 (= release/0.3-58 + cherry-pick of parity/kbd-grab e9ef261): the virtio keyboard advertises Super (KEY_LEFTMETA / KEY_RIGHTMETA) and Compose;
+  the guest's input core dropped Super because the device did not list it (kit-vm22 K-3: Alt+Tab and Escape reached
+  the guest with the keyboard grab, Super did not)
+
 * Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-58
 - crosvm (parity/kbd-grab b47d643 on 71a2adb): keyboard grab - with CROSVM_GVM_KBD_GRAB=1 the VM window asks the
   compositor (keyboard-shortcuts-inhibit-unstable-v1) to pass its own shortcuts (Super, Alt+Tab) to the VM while it
