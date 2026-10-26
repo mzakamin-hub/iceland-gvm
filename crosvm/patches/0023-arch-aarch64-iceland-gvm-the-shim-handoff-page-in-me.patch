@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Sun, 25 Oct 2026 20:37:25 +0300
-Subject: [PATCH 23/26] arch + aarch64: iceland gvm: the shim handoff page in
+Subject: [PATCH 23/28] arch + aarch64: iceland gvm: the shim handoff page in
  /memory (+ no-map reserved node)
 
 p5 PV-A-2: with the handoff page left out of the guest /memory, the boot shim first read of it took a

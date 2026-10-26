@@ -6,9 +6,10 @@ and can also be used on its own from a terminal.
 
 The SoC's hypervisor is Qualcomm's **Gunyah**: it owns EL2, so there is no KVM. VMs run with **crosvm**'s Gunyah
 backend as **protected VMs** (the firmware refuses unprotected ones): the guest's memory is lent to it and the host
-reaches only a shared bounce buffer (the restricted DMA pool) and the shared regions crosvm sets up.
+reaches only a shared bounce buffer (the restricted DMA pool) and the shared regions crosvm sets up. An opt-in shared
+memory mode (below) shares the guest's RAM with the host instead.
 
-Current version: **0.3-49** (package `iceland-gvm`, Fedora 44 aarch64), released together with iceland-vms 0.2-17.
+Current version: **0.3-55** (package `iceland-gvm`, Fedora 44 aarch64), released together with iceland-vms 0.2-18.
 
 ## What works
 
@@ -33,6 +34,20 @@ Current version: **0.3-49** (package `iceland-gvm`, Fedora 44 aarch64), released
   | vhost-net (default) | 2877 MB/s | 4761 MB/s |
 - **Performance defaults**: guest memory lent in 2 MiB pages; io_uring for every disk; the shared I/O bounce buffer
   limited to 320 MiB (larger pools cannot be set up by the guest kernel).
+- **Shared memory mode (opt-in per VM, software display or headless)**: Settings > Memory > Memory protection >
+  "Shared with the tablet". The VM still runs under Gunyah, but its RAM is shared with the tablet instead of lent:
+  a small boot shim accepts the memory and starts the kernel, so there is no I/O bounce buffer and devices reach
+  guest memory directly. **The tablet can read and change all of that VM's memory** (the app shows this warning
+  whenever the mode is selected); Protected stays the default for every VM. Use it with the software display or
+  without a display; 3D graphics in this mode is not supported yet. It is not uniformly faster - measured on the
+  tablet against the same VM in the protected mode:
+
+  | | shared | protected | |
+  |---|---|---|---|
+  | disk write (256 MiB, fsync) | 260 MB/s | 397 MB/s | -35 % |
+  | disk read (cold) | 450 MB/s | 430 MB/s | about the same |
+  | network guest -> host | 4494 MB/s | 2611 MB/s | +72 % |
+  | network host -> guest | 1484 MB/s | 1940 MB/s | -23 % |
 - **Windows 11 (arm64)**: a prepared image boots on the ACPI + ECAM UEFI firmware; network, Remote Desktop and the
   image's OpenSSH server work. Shut Windows down from inside Windows, or use Force Off.
 - A DMA guard in crosvm refuses virtio buffers outside the shared regions instead of touching lent memory.
@@ -44,7 +59,7 @@ back to crosvm's own network). One VM at a time.
 
 | Part | Where it comes from |
 |---|---|
-| `crosvm` | upstream crosvm `96e84c3f680e` plus the 26 patches in [`crosvm/patches/`](crosvm/patches), built with the features `gunyah,virgl_renderer,vnc` |
+| `crosvm` | upstream crosvm `96e84c3f680e` plus the 28 patches in [`crosvm/patches/`](crosvm/patches), built with the features `gunyah,virgl_renderer,vnc` |
 | guest kernel `guest/Image` + modules | Linux 7.3.0-next-20261020 (the [iceland-linux](https://github.com/mzakamin-hub/iceland-linux) queue q90j as the source tree) with the guest config and two patches, see [`guest-kernel/`](guest-kernel) (unchanged since 0.3-27) |
 | `guest/initramfs-gvm.cpio.gz` | busybox 1.37.0 (Fedora 44's `busybox` package) and [`initramfs/init.sh`](initramfs/init.sh), packed by `initramfs/mkcpio.py` |
 | `gvm.sh` and its helpers | [`gvm/`](gvm): the command-line tool, its window, touch, VNC and memory helpers |
@@ -57,7 +72,7 @@ The host side, the Gunyah VM manager (`gunyah.ko` and its companions), is part o
 ## Use
 
 ```bash
-sudo dnf install ./iceland-gvm-0.3-49.fc44.aarch64.rpm
+sudo dnf install ./iceland-gvm-0.3-55.fc44.aarch64.rpm
 ```
 
 `gvm.sh` lives in `/usr/libexec/iceland-gvm/`. The everyday commands:
@@ -91,7 +106,7 @@ For managing VMs, Windows included, use the app.
 ## Licences
 
 - crosvm: BSD-3-Clause (upstream `LICENSE`, [`LICENSES/crosvm-BSD-3-Clause`](LICENSES/crosvm-BSD-3-Clause)). The
-  simple-framebuffer display, the VNC bridge and the pseudo-unprotected mode with its boot shim are ported from
+  simple-framebuffer display, the VNC bridge and the shared (pseudo-unprotected) memory mode with its boot shim are ported from
   DroidVM's crosvm fork and keep its GPL-2.0-or-later headers with DroidVM's additional permissions
   ([`LICENSES/droidvm-crosvm-ADDITIONAL-PERMISSIONS`](LICENSES/droidvm-crosvm-ADDITIONAL-PERMISSIONS)); the
   droidvm-shim sources keep their own headers. The binary links the system LibVNCServer (GPL-2.0-or-later). See

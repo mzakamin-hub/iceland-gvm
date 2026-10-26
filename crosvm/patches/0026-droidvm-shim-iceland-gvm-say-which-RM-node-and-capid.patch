@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Mon, 26 Oct 2026 04:09:01 +0300
-Subject: [PATCH 26/26] droidvm-shim: iceland gvm: say which RM node and capids
+Subject: [PATCH 26/28] droidvm-shim: iceland gvm: say which RM node and capids
  it took, bound the queue drain (fix run)
 
 Fix run (0.3-45): the shim printed its device-tree line and then nothing: it found an RM node this time and went

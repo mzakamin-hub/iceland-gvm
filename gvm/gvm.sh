@@ -1337,8 +1337,11 @@ pvm_boot() {   # $1 = row prefix: the boot shim's lines in crosvm's log (GH-SHIM
 	local e=$L/crosvm-stderr.txt
 	grep -a 'GH-SHIM' "$e" | sed 's/^.*\] //' > "$L/$1-shim.txt"
 	# the shim's own console bytes (it writes "SHIM ..." to the 8250 before Linux runs)
-	grep -a 'SHIM' "$L/console-run.txt" 2> /dev/null | tail -n 3 | tr -d '\r' > "$L/$1-shim-console.txt"
-	[ -s "$L/$1-shim-console.txt" ] && row "$1-0" INFO "shim console: $(tr '\n' '|' < "$L/$1-shim-console.txt" | cut -c1-200)"
+	# pvm49: only THIS run's console bytes (the console file keeps every earlier boot), every SHIM line, in order
+	tail -c +$((${PVM_C0:-0} + 1)) "$L/console-run.txt" 2> /dev/null | grep -a 'SHIM' | tr -d '\r' > "$L/$1-shim-console.txt"
+	[ -s "$L/$1-shim-console.txt" ] && row "$1-0" INFO "shim console ($(wc -l < "$L/$1-shim-console.txt") lines, last: $(tail -n1 "$L/$1-shim-console.txt" | cut -c1-120)): $(tr '\n' '|' < "$L/$1-shim-console.txt" | cut -c1-900)"
+	grep -a 'GVM-PAGE-FAULT' "$e" | head -n 3 | sed 's/^.*\] //' > "$L/$1-pagefault.txt"
+	[ -s "$L/$1-pagefault.txt" ] && row "$1-0F" INFO "host could not back a guest access: $(tr '\n' ' ' < "$L/$1-pagefault.txt" | cut -c1-200)"
 	local w; w=$(grep -a -m1 'shared as .* parcel' "$L/$1-shim.txt")
 	[ -n "$w" ] && row "$1-1" PASS "window shared after VM start: ${w#GH-SHIM: }" || row "$1-1" FAIL "no window share line: $(grep -a 'GH-SHIM\|GH_VM\|error' "$e" | tail -n2 | sed 's/^.*\] //' | tr '\n' ' ' | cut -c1-160)"
 	if grep -q 'handing over to the payload' "$L/$1-shim.txt"; then
@@ -1346,6 +1349,12 @@ pvm_boot() {   # $1 = row prefix: the boot shim's lines in crosvm's log (GH-SHIM
 	else
 		row "$1-2" FAIL "boot shim did not hand over: $(grep -a 'gave up\|nothing written\|status' "$L/$1-shim.txt" | tail -n1 | cut -c1-160)"
 	fi
+}
+
+pvm_disk() {   # $1 = row id: 256 MiB written with fsync and re-read cold, contents compared, write speed reported
+	local io; io=$(G 'f=/var/tmp/pv-io; dd if=/dev/urandom of=$f bs=1M count=256 conv=fsync 2>&1 | tail -n1; a=$(md5sum < $f); sudo sh -c "echo 3 > /proc/sys/vm/drop_caches"; t0=$(date +%s%N); b=$(md5sum < $f); t1=$(date +%s%N); rm -f $f; echo "READ $(( 256 * 1000000000 / (t1 - t0 + 1) )) MB/s"; [ "$a" = "$b" ] && echo SAME || echo DIFF' 2>&1 | tr '\n' ' ')
+	echo "$io" | grep -q SAME && row "$1" PASS "virtio-blk 256 MiB write + cold re-read identical: write $(echo "$io" | grep -oE '[0-9.]+ [MG]B/s' | head -n1), cold read $(echo "$io" | grep -oE 'READ [0-9]+ MB/s' | cut -d' ' -f2-)" \
+		|| row "$1" FAIL "disk I/O: $(echo "$io" | cut -c1-140)"
 }
 
 pvm_guest() {   # $1 = row prefix: guest-side checks over ssh (needs G from v4_guest)
@@ -1359,9 +1368,8 @@ pvm_guest() {   # $1 = row prefix: guest-side checks over ssh (needs G from v4_g
 	local rd; rd=$(G 'ls /proc/device-tree/reserved-memory 2>/dev/null | grep -ci restricted; sudo dmesg | grep -ci "restricted.*dma\|swiotlb.*restricted"; echo PV4-OK' 2>/dev/null)
 	echo "$rd" | grep -q PV4-OK && rd=$(echo "$rd" | grep -v PV4-OK | awk '{n += $1} END {print n + 0}') || rd=""
 	[ "${rd:-1}" = 0 ] && row "$1-4" PASS "no restricted DMA pool in the guest (no bounce buffers)" || row "$1-4" FAIL "restricted DMA pool still present (${rd:-?} hits)"
-	local io; io=$(G 'f=/var/tmp/pv-io; dd if=/dev/urandom of=$f bs=1M count=256 conv=fsync 2>&1 | tail -n1; a=$(md5sum < $f); sudo sh -c "echo 3 > /proc/sys/vm/drop_caches"; b=$(md5sum < $f); rm -f $f; [ "$a" = "$b" ] && echo SAME || echo DIFF' 2>&1 | tr '\n' ' ')
-	echo "$io" | grep -q SAME && row "$1-5" PASS "virtio-blk 256 MiB write + cold re-read identical: $(echo "$io" | grep -oE '[0-9.]+ [MG]B/s' | head -n1)" \
-		|| row "$1-5" FAIL "disk I/O: $(echo "$io" | cut -c1-140)"
+	pvm_disk "$1-5"
+	v11_net "$1-N"      # release: network throughput guest <-> host in this mode (compare PV-R-N)
 	# PV-6: the warning in the app is true: the host finds a marker the guest wrote into its RAM (tmpfs)
 	local mk; mk="ICELAND-PV6-$(od -An -tx8 -N8 /dev/urandom | tr -d ' ')"
 	G "printf '%s' '$mk' > /dev/shm/pv6; sync" 2>/dev/null
@@ -1384,7 +1392,8 @@ pvm() {   # parity step 4: the opt-in shared memory mode (DroidVM pseudo-unprote
 	[ "${GVM_V1B_PASSED:-0}" = 1 ] || die "PVM needs V1b PASS first (GVM_V1B_PASSED=1)"
 	"$CROSVM" run --help 2>&1 | grep -q 'protected-vm-pseudo-unprotected' || die "crosvm has no --protected-vm-pseudo-unprotected"
 	local d0; d0=$(dmesg | wc -l)
-	export GVM_PVM=1 GVM_RUNMODE=--simplefb GVM_NOGLAMOR=1 GVM_NODIE=1
+	export GVM_PVM=1 GVM_RUNMODE=--simplefb GVM_NOGLAMOR=1 GVM_NODIE=1 CROSVM_GVM_FAULT_INJECT=1
+	PVM_C0=$(stat -c %s "$L/console-run.txt" 2> /dev/null || echo 0)
 	v4_guest || say "pvm: no guest in the shared memory mode (rows below say why)"
 	pvm_boot PV-A; pvm_guest PV-A
 	clean_stop; wait
@@ -1392,6 +1401,7 @@ pvm() {   # parity step 4: the opt-in shared memory mode (DroidVM pseudo-unprote
 	[ -s "$L/pv-a-end.txt" ] && row PV-A-7 FAIL "teardown: $(tr '\n' ' ' < "$L/pv-a-end.txt" | cut -c1-140)" || row PV-A-7 PASS "clean stop, nothing left shared"
 	if [ "${GVM_PVM_3D:-0}" = 1 ]; then
 		export GVM_RUNMODE=--gpu3d
+		PVM_C0=$(stat -c %s "$L/console-run.txt" 2> /dev/null || echo 0)
 		v4_guest || say "pvm: no 3D guest in the shared memory mode"
 		pvm_boot PV-B
 		local gm; gm=$(G 'timeout 120 glmark2-es2-drm --off-screen -b build:use-vbo=true -b texture -b shading 2>&1 | grep -i score' 2>/dev/null)
@@ -1400,9 +1410,10 @@ pvm() {   # parity step 4: the opt-in shared memory mode (DroidVM pseudo-unprote
 		[ -s "$L/pv-b-acc.txt" ] && row PV-B-4 INFO "$(cat "$L/pv-b-acc.txt")"
 		v4_end PV-B
 	fi
-	unset GVM_PVM GVM_NODIE; export GVM_RUNMODE=--simplefb
+	unset GVM_PVM GVM_NODIE CROSVM_GVM_FAULT_INJECT; export GVM_RUNMODE=--simplefb
 	v4_guest
 	row PV-R PASS "the default protected mode still boots (ssh up, no GH-SHIM lines: $(grep -ac 'GH-SHIM' "$L/crosvm-stderr.txt"))"
+	if G true 2> /dev/null; then pvm_disk PV-R-5; v11_net PV-R-N; fi    # release: the protected-mode numbers to compare
 	clean_stop; wait
 	dmesg | tail -n +$((d0 + 1)) | grep -E 'BUG|WARNING|Oops|SError|Internal error' | grep -vE 'gvm: |vm-run: |iceland-combo' && row K1 FAIL "host kernel warnings" || row K1 PASS "no host kernel warnings"
 }

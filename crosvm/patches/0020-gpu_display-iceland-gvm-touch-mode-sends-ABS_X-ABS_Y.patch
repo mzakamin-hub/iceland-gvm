@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Sun, 25 Oct 2026 18:24:24 +0300
-Subject: [PATCH 20/26] gpu_display: iceland gvm: touch mode sends ABS_X /
+Subject: [PATCH 20/28] gpu_display: iceland gvm: touch mode sends ABS_X /
  ABS_Y for the first contact
 
 The multitouch device advertises ABS_X / ABS_Y but only MT positions were sent, so single-touch readers in the

@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: mzak <mzak.amin@gmail.com>
 Date: Sun, 25 Oct 2026 16:05:26 +0300
-Subject: [PATCH 18/26] gpu_display: iceland gvm: fullscreen size from the
+Subject: [PATCH 18/28] gpu_display: iceland gvm: fullscreen size from the
  creation roundtrip, touchpad horizontal scroll
 
 - the first xdg configure arrives before the viewport exists and already carries the fullscreen size: keep it and

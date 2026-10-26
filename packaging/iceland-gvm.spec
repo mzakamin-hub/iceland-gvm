@@ -4,7 +4,7 @@
 %global __strip /bin/true
 Name:           iceland-gvm
 Version:        0.3
-Release:        49%{?dist}
+Release:        55%{?dist}
 Summary:        Protected Gunyah virtual machines (crosvm) for the OnePlus Pad 4
 License:        BSD-3-Clause AND GPL-2.0-only AND GPL-2.0-or-later AND BSD-2-Clause-Patent
 ExclusiveArch:  aarch64
@@ -31,6 +31,25 @@ install -m 644 gvm/integ/org.iceland.gvm.policy %{buildroot}/usr/share/polkit-1/
 /usr/share/polkit-1/actions/org.iceland.gvm.policy
 
 %changelog
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-55
+- release: the shared memory mode works (pvm53 on q90u: PV-A-1..7 PASS): crosvm --protected-vm-pseudo-unprotected
+  boots a guest whose RAM is shared at run time and accepted by the boot shim (no bounce buffers; the host can read
+  the guest's memory); crosvm = 0.3-53's (release branch, private path free)
+- gvm.sh pvm: disk and network numbers in the shared mode (PV-A-5, PV-A-N) and the protected mode (PV-R-5, PV-R-N)
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-53
+- shared memory mode (still behind its flag): crosvm requests the RM-RPC message queue (vm-config vdevice rm-rpc, the
+  resource manager then adds /hypervisor/qcom,resource-mgr) in this mode too; pvm51 showed the shim a /hypervisor node
+  with doorbells but no RM node, because the queue was only requested with the 3D display's GuestAccept
+
+* Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-51
+- shared memory mode diagnostics (mode still behind its flag): the boot shim is linked at its load address
+  (0x80000000; a table of &str had held absolute pointers near 0, and reading one faulted the VM) and prints a
+  numbered SHIM[n] line before / after every step (entry pc, dtb, RM lookup, capids, each drained message, accept,
+  /memory rewrite, jump); crosvm logs GVM-PAGE-FAULT with the guest address and, with CROSVM_GVM_FAULT_INJECT=1
+  (gvm.sh pvm), injects the abort so the shim's exception vector reports it; gvm.sh pvm shows all of this run's
+  shim lines (PV-A-0) and the page faults (PV-A-0F)
+
 * Mon Oct 26 2026 mzak <mzak.amin@gmail.com> - 0.3-49
 - repack, no code change: guest kernel Image relinked with a neutral build user, gunyah_guest.ko and the edk2-gunyah ECAM
   firmware rebuilt from neutral build paths, so no build-machine path or user name is inside a packaged file; two
